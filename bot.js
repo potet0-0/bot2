@@ -9,12 +9,11 @@ const options = {
 
 const bot = mineflayer.createBot(options)
 
-const welcome = () => {
-    bot.chat('hiiiii')
-}
+let killInterval = null
 
-bot.once('spawn', welcome)
-
+bot.once('spawn', () => {
+    bot.chat('aaa')
+})
 
 bot.on('chat', async (username, message) => {
   if (username === bot.username) return
@@ -34,6 +33,85 @@ bot.on('chat', async (username, message) => {
       break
     case 'equip dirt':
       equipDirt()
+      break
+    case 'forward':
+      bot.setControlState('forward', true)
+      setTimeout(() => bot.setControlState('forward', false), 2000)
+      bot.chat('moving forward')
+      break
+    case 'sprint toggle':
+      if (bot.controlState.sprint) {
+        bot.setControlState('sprint', false)
+        bot.chat('stop sprinting')
+      } else {
+        bot.setControlState('sprint', true)
+        bot.chat('sprinting!')
+      }
+      break
+    case 'back':
+      bot.setControlState('back', true)
+      setTimeout(() => bot.setControlState('back', false), 2000)
+      bot.chat('moving backwards')
+      break
+    case 'left':
+      bot.setControlState('left', true)
+      setTimeout(() => bot.setControlState('left', false), 2000)
+      bot.chat('moving left')
+      break
+    case 'right':
+      bot.setControlState('right', true)
+      setTimeout(() => bot.setControlState('right', false), 2000)
+      bot.chat('moving right')
+      break
+    case 'attack': {
+      const target = bot.nearestEntity(e =>
+        e.type === 'mob' ||
+        (e.type === 'player' && e.username !== bot.username)
+      )
+      if (target) {
+        bot.lookAt(target.position.offset(0, target.height, 0))
+        bot.attack(target)
+        bot.chat('attacking ' + (target.username || target.name || target.type))
+      } else {
+        bot.chat('no target, i have no enemies')
+      }
+      break
+    }
+    case 'kill': {
+      const target = bot.nearestEntity(e =>
+        e.type === 'mob' ||
+        (e.type === 'player' && e.username !== bot.username)
+      )
+      if (target) {
+        bot.chat('killing ' + (target.username || target.name || target.type))
+        killInterval = setInterval(() => {
+          const t = bot.nearestEntity(e =>
+            e.type === 'mob' ||
+            (e.type === 'player' && e.username !== bot.username)
+          )
+          if (t) {
+            bot.lookAt(t.position.offset(0, t.height, 0))
+            bot.setControlState('forward', true)
+            bot.attack(t)
+          } else {
+            clearInterval(killInterval)
+            bot.setControlState('forward', false)
+            bot.chat('target is dead!')
+          }
+        }, 500)
+      } else {
+        bot.chat('nobody to kill')
+      }
+      break
+    }
+    case 'stopkill':
+      if (killInterval) {
+        clearInterval(killInterval)
+        killInterval = null
+        bot.setControlState('forward', false)
+        bot.chat('stopped killing')
+        break
+      }
       break
   }
 })
@@ -111,8 +189,7 @@ async function equipDirt () {
 
 function itemToString (item) {
   if (item) {
-    return `
-    ${item.name} x ${item.count}`
+    return `${item.name} x ${item.count}`
   } else {
     return '(nothing)'
   }

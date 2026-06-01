@@ -7,7 +7,7 @@ def run_bot():
     bot_path = os.path.join(script_dir, 'bot.js')
 
     while True:
-        print('[*] Starting bot...')
+        print('starting bot')
         proc = subprocess.Popen(
             ['node', bot_path],
             cwd=script_dir,
@@ -20,7 +20,7 @@ def run_bot():
             print(line, end='')
 
         proc.wait()
-        print('[!] Bot stopped. Restarting in 5s...')
+        print('stopped, restarting in 5 sec')
         time.sleep(5)
 
 if __name__ == '__main__':
