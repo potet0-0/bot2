@@ -2,9 +2,10 @@ const mineflayer = require('mineflayer')
 const vec3 = require('vec3')
 
 const options = {
-    username: 'slave',
+    username: 'abdullahi',
     host: 'localhost',
     port: 12312,
+    version: '1.21.4',
 }
 
 const bot = mineflayer.createBot(options)
@@ -113,6 +114,14 @@ bot.on('chat', async (username, message) => {
         break
       }
       break
+    case 'follow':
+      const target = bot.nearestEntity(e => e.username === message.split(' ')[1])
+      if (target) {
+        bot.chat(`following ${target.username}`)
+        bot.setControlState('forward', true)
+      } else {
+        bot.chat('target not found')
+      }
   }
 })
 
