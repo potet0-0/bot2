@@ -4,12 +4,21 @@ const mineflayerViewer = require('prismarine-viewer').mineflayer
 const { pathfinder, Movements } = require('mineflayer-pathfinder')
 const { GoalXZ } = require('mineflayer-pathfinder').goals
 
-const options = {
+//if playing locally
+// const options = {
+//   username: 'slave',
+//   host: 'localhost',
+//   port: 12312,
+//   version: '1.20.4',
+// }
+//if playing on aternos
+ const options = { 
     username: 'slave',
-    host: 'localhost',
-    port: 12312,
+    host: 'potet1231.aternos.me',
+    port: 25565,
     version: '1.20.4',
-}
+    auth: 'offline'
+ }
 
 const bot = mineflayer.createBot(options)
 
@@ -19,22 +28,22 @@ let killInterval = null
 let followInterval = null
 
 bot.once('spawn', () => {
-    bot.chat('aaa')
+  bot.chat('aaa')
 
-    mineflayerViewer(bot, { firstPerson: true, port: 3000 })
-    console.log('[+] Viewer ready at http://localhost:3000')
+  mineflayerViewer(bot, { firstPerson: true, port: 3001 })
+  console.log('Viewer ready at http://localhost:3001')
 
-    const path = [bot.entity.position.clone()]
-    bot.on('move', () => {
-        if (path[path.length - 1].distanceTo(bot.entity.position) > 1) {
-            path.push(bot.entity.position.clone())
-            bot.viewer.drawLine('path', path)
-        }
-    })
+  const path = [bot.entity.position.clone()]
+  bot.on('move', () => {
+    if (path[path.length - 1].distanceTo(bot.entity.position) > 1) {
+      path.push(bot.entity.position.clone())
+      bot.viewer.drawLine('path', path)
+    }
+  })
 
-    const mcData = require('minecraft-data')(bot.version)
-    const defaultMove = new Movements(bot, mcData)
-    bot.pathfinder.setMovements(defaultMove)
+  const mcData = require('minecraft-data')(bot.version)
+  const defaultMove = new Movements(bot, mcData)
+  bot.pathfinder.setMovements(defaultMove)
 })
 
 bot.on('error', err => console.log('[ERR]', err.message))
@@ -44,27 +53,34 @@ bot.on('end', reason => console.log('[END]', reason))
 bot.on('chat', async (username, message) => {
   if (username === bot.username) return
   switch (message) {
+    
     case 'loaded':
       await bot.waitForChunksToLoad()
       bot.chat('Ready!')
       break
+
     case 'list':
       sayItems()
       break
+
     case 'dig':
       dig()
       break
+
     case 'build':
       build()
       break
+
     case 'equip dirt':
       equipDirt()
       break
+
     case 'forward':
       bot.setControlState('forward', true)
       setTimeout(() => bot.setControlState('forward', false), 2000)
       bot.chat('moving forward')
       break
+
     case 'jump':
       bot.setControlState('jump', true)
       bot.setControlState('forward', true)
@@ -73,6 +89,7 @@ bot.on('chat', async (username, message) => {
         bot.setControlState('forward', false)
       }, 2000)
       break
+
     case 'sprint toggle':
       if (bot.controlState.sprint) {
         bot.setControlState('sprint', false)
@@ -82,35 +99,25 @@ bot.on('chat', async (username, message) => {
         bot.chat('sprinting!')
       }
       break
+
     case 'back':
       bot.setControlState('back', true)
       setTimeout(() => bot.setControlState('back', false), 2000)
       bot.chat('moving backwards')
       break
+
     case 'left':
       bot.setControlState('left', true)
       setTimeout(() => bot.setControlState('left', false), 2000)
       bot.chat('moving left')
       break
+
     case 'right':
       bot.setControlState('right', true)
       setTimeout(() => bot.setControlState('right', false), 2000)
       bot.chat('moving right')
       break
-    case 'attack': {
-      const target = bot.nearestEntity(e =>
-        e.type === 'mob' ||
-        (e.type === 'player' && e.username !== bot.username)
-      )
-      if (target) {
-        bot.lookAt(target.position.offset(0, target.height, 0))
-        bot.attack(target)
-        bot.chat('attacking ' + (target.username || target.name || target.type))
-      } else {
-        bot.chat('no target, i have no enemies')
-      }
-      break
-    }
+
     case 'kill': {
       const target = bot.nearestEntity(e =>
         e.type === 'mob' ||
@@ -124,12 +131,12 @@ bot.on('chat', async (username, message) => {
             (e.type === 'player' && e.username !== bot.username)
           )
           if (t) {
+            bot.pathfinder.setGoal(new GoalXZ(t.position.x, t.position.z))
             bot.lookAt(t.position.offset(0, t.height, 0))
-            bot.setControlState('forward', true)
             bot.attack(t)
           } else {
             clearInterval(killInterval)
-            bot.setControlState('forward', false)
+            killInterval = null
             bot.chat('target is dead!')
           }
         }, 500)
@@ -142,7 +149,7 @@ bot.on('chat', async (username, message) => {
       if (killInterval) {
         clearInterval(killInterval)
         killInterval = null
-        bot.setControlState('forward', false)
+        bot.pathfinder.setGoal(null)
         bot.chat('stopped killing')
       }
       break
@@ -159,12 +166,12 @@ bot.on('chat', async (username, message) => {
             (e.type === 'player' && e.username !== bot.username)
           )
           if (f) {
+            bot.pathfinder.setGoal(new GoalXZ(f.position.x, f.position.z))
             bot.lookAt(f.position.offset(0, f.height, 0))
-            bot.setControlState('forward', true)
           } else {
             clearInterval(followInterval)
-            bot.setControlState('forward', false)
-            bot.chat('stopped following')
+            followInterval = null
+            bot.chat('target is dead!')
           }
         }, 500)
       } else {
@@ -176,7 +183,7 @@ bot.on('chat', async (username, message) => {
       if (followInterval) {
         clearInterval(followInterval)
         followInterval = null
-        bot.setControlState('forward', false)
+        bot.pathfinder.setGoal(null)
         bot.chat('stopped following')
       }
       break
@@ -189,23 +196,24 @@ bot.on('chat', async (username, message) => {
       bot.chat('walking to nearby location!')
       break
     }
-  default:
-    if (message.startsWith('goto ')) {
-      const parts = message.split(' ')
-      if (parts.length === 3) {
-        const x = parseInt(parts[1])
-        const z = parseInt(parts[2])
-        bot.pathfinder.setGoal(new GoalXZ(x, z))
-        bot.chat('walking to ' + x + ' ' + z)
-      } else {
-        bot.chat('bad format')
+    default:
+      if (message.startsWith('goto ')) {
+        const parts = message.split(' ')
+        if (parts.length === 3) {
+          const x = parseInt(parts[1])
+          const z = parseInt(parts[2])
+          bot.pathfinder.setGoal(new GoalXZ(x, z))
+          bot.chat('walking to ' + x + ' ' + z)
+        } else {
+          bot.chat('bad format')
+        }
       }
-    }
-    break
+      break
+
   }
 })
 
-function sayItems (items = bot.inventory.items()) {
+function sayItems(items = bot.inventory.items()) {
   const output = items.map(itemToString).join(', ')
   if (output) {
     bot.chat(output)
@@ -214,7 +222,7 @@ function sayItems (items = bot.inventory.items()) {
   }
 }
 
-async function dig () {
+async function dig() {
   let target
   if (bot.targetDigBlock) {
     bot.chat(`already digging ${bot.targetDigBlock.name}`)
@@ -234,7 +242,7 @@ async function dig () {
   }
 }
 
-function build () {
+function build() {
   const referenceBlock = bot.blockAt(bot.entity.position.offset(0, -1, 0))
   const jumpY = Math.floor(bot.entity.position.y) + 1.0
   bot.setControlState('jump', true)
@@ -242,7 +250,7 @@ function build () {
 
   let tryCount = 0
 
-  async function placeIfHighEnough () {
+  async function placeIfHighEnough() {
     if (bot.entity.position.y > jumpY) {
       try {
         await bot.placeBlock(referenceBlock, vec3(0, 1, 0))
@@ -261,7 +269,7 @@ function build () {
   }
 }
 
-async function equipDirt () {
+async function equipDirt() {
   let itemsByName
   if (bot.supportFeature('itemsAreNotBlocks')) {
     itemsByName = 'itemsByName'
@@ -276,7 +284,7 @@ async function equipDirt () {
   }
 }
 
-function itemToString (item) {
+function itemToString(item) {
   if (item) {
     return `${item.name} x ${item.count}`
   } else {
@@ -284,7 +292,7 @@ function itemToString (item) {
   }
 }
 
-async function tunnel () {
+async function tunnel() {
   for (let i = 0; i < 5; i++) {
     if (bot.targetDigBlock) {
       bot.chat(`already digging ${bot.targetDigBlock.name}`)
